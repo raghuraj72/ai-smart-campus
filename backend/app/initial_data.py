@@ -1,66 +1,86 @@
 import asyncio
-from datetime import datetime, timezone
-import bcrypt
+
 from sqlmodel import select
+
 from app.core.database import get_session
+from app.core.security import get_password_hash
 from app.models.domain import User, UserRole
 
 
-def hash_password(password: str) -> str:
-    pwd_bytes = password.encode("utf-8")
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
-
-
-def utc_now_naive() -> datetime:
-    """Returns offset-naive UTC datetime for PostgreSQL compatibility."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+INITIAL_USERS = [
+    {
+        "email": "admin@campus.edu",
+        "password": "admin123",
+        "full_name": "System Administrator",
+        "role": UserRole.ADMIN,
+        "uid": "ADMIN001",
+        "university_code": "CAMPUS",
+        "department": "Administration",
+    },
+    {
+        "email": "student@campus.edu",
+        "password": "student123",
+        "full_name": "Jane Doe",
+        "role": UserRole.STUDENT,
+        "uid": "STU001",
+        "university_code": "CAMPUS",
+        "department": "Computer Science",
+    },
+    {
+        "email": "faculty@campus.edu",
+        "password": "faculty123",
+        "full_name": "Dr. Campus Faculty",
+        "role": UserRole.FACULTY,
+        "uid": "FAC001",
+        "university_code": "CAMPUS",
+        "department": "Computer Science",
+    },
+]
 
 
 async def init_db():
-    async for db in get_session():
-        now = utc_now_naive()
+    async for session in get_session():
 
-        # Check Admin
-        admin_result = await db.execute(
-            select(User).where(User.email == "admin@campus.edu")
-        )
-        admin = admin_result.scalars().first()
+        for user_data in INITIAL_USERS:
 
-        if not admin:
-            admin_user = User(
-                email="admin@campus.edu",
-                hashed_password=hash_password("admin123"),
-                full_name="System Admin",
-                role=UserRole.ADMIN,
-                is_active=True,
-                created_at=now,
-                updated_at=now,
+            result = await session.execute(
+                select(User).where(
+                    User.email == user_data["email"]
+                )
             )
-            db.add(admin_user)
-            await db.commit()
-            print("--> Created initial Admin user (admin@campus.edu / admin123)")
 
-        # Check Student
-        student_result = await db.execute(
-            select(User).where(User.email == "student@campus.edu")
-        )
-        student = student_result.scalars().first()
+            existing_user = result.scalars().first()
 
-        if not student:
-            student_user = User(
-                email="student@campus.edu",
-                hashed_password=hash_password("student123"),
-                full_name="Jane Doe",
-                role=UserRole.STUDENT,
+            if existing_user:
+                print(
+                    f"--> User already exists: "
+                    f"{user_data['email']}"
+                )
+                continue
+
+            user = User(
+                email=user_data["email"],
+                hashed_password=get_password_hash(
+                    user_data["password"]
+                ),
+                full_name=user_data["full_name"],
+                role=user_data["role"],
+                uid=user_data["uid"],
+                university_code=user_data["university_code"],
+                department=user_data["department"],
                 is_active=True,
-                created_at=now,
-                updated_at=now,
             )
-            db.add(student_user)
-            await db.commit()
-            print("--> Created initial Student user (student@campus.edu / student123)")
 
+            session.add(user)
+
+            print(
+                f"--> Created {user_data['role'].value}: "
+                f"{user_data['email']}"
+            )
+
+        await session.commit()
+
+        print()
         print("Database initialization complete.")
         break
 

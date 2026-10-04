@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
+
 from sqlmodel import Field, SQLModel
 
 
-def utc_now_naive() -> datetime:
-    """Returns current UTC time as an offset-naive datetime for PostgreSQL compatibility."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def utc_now() -> datetime:
+    """
+    Return the current UTC time as a timezone-aware datetime.
+    """
+    return datetime.now(timezone.utc)
 
 
 class UserRole(str, Enum):
@@ -25,33 +28,131 @@ class PriorityLevel(str, Enum):
 
 
 class User(SQLModel, table=True):
-    __table_args__ = {"extend_existing": True}
+    """
+    Single canonical user model for the entire application.
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(unique=True, nullable=False)
-    hashed_password: str = Field(nullable=False)
-    full_name: str = Field(nullable=False)
-    role: UserRole = Field(default=UserRole.STUDENT)
+    All authentication, academic, complaint and future campus
+    features should reference this model.
+    """
 
-    uid: Optional[str] = Field(default=None, unique=True)
-    university_code: Optional[str] = Field(default=None, index=True)
-    department: Optional[str] = Field(default=None)
+    __tablename__ = "user"
 
-    is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=utc_now_naive)
-    updated_at: datetime = Field(default_factory=utc_now_naive)
+    id: Optional[int] = Field(
+        default=None,
+        primary_key=True,
+    )
+
+    email: str = Field(
+        unique=True,
+        index=True,
+        nullable=False,
+        max_length=255,
+    )
+
+    hashed_password: str = Field(
+        nullable=False,
+        max_length=255,
+    )
+
+    full_name: str = Field(
+        nullable=False,
+        max_length=150,
+    )
+
+    role: UserRole = Field(
+        default=UserRole.STUDENT,
+        nullable=False,
+    )
+
+    is_active: bool = Field(
+        default=True,
+        nullable=False,
+    )
+
+    # University/student/faculty identifier
+    uid: Optional[str] = Field(
+        default=None,
+        unique=True,
+        index=True,
+        max_length=100,
+    )
+
+    # Example: CU-UP / CSE / AIML
+    university_code: Optional[str] = Field(
+        default=None,
+        index=True,
+        max_length=100,
+    )
+
+    department: Optional[str] = Field(
+        default=None,
+        index=True,
+        max_length=150,
+    )
+
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        nullable=False,
+    )
+
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        nullable=False,
+    )
 
 
 class Complaint(SQLModel, table=True):
-    __table_args__ = {"extend_existing": True}
+    """
+    Campus complaint submitted by a student.
+    """
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(nullable=False)
-    description: str = Field(nullable=False)
-    location: str = Field(nullable=False)
-    category: Optional[str] = Field(default="Unclassified")
-    priority: PriorityLevel = Field(default=PriorityLevel.MEDIUM)
-    department: Optional[str] = Field(default="General Maintenance")
-    status: str = Field(default="Assigned")
-    student_id: int = Field(foreign_key="user.id")
-    created_at: datetime = Field(default_factory=utc_now_naive)
+    __tablename__ = "complaint"
+
+    id: Optional[int] = Field(
+        default=None,
+        primary_key=True,
+    )
+
+    title: str = Field(
+        nullable=False,
+        max_length=200,
+    )
+
+    description: str = Field(
+        nullable=False,
+    )
+
+    location: str = Field(
+        nullable=False,
+        max_length=200,
+    )
+
+    category: Optional[str] = Field(
+        default="Unclassified",
+        max_length=100,
+    )
+
+    priority: PriorityLevel = Field(
+        default=PriorityLevel.MEDIUM,
+        nullable=False,
+    )
+
+    department: Optional[str] = Field(
+        default="General Maintenance",
+        max_length=150,
+    )
+
+    status: str = Field(
+        default="Assigned",
+        max_length=50,
+    )
+
+    student_id: int = Field(
+        foreign_key="user.id",
+        nullable=False,
+    )
+
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        nullable=False,
+    )
