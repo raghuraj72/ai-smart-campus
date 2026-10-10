@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -7,7 +8,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api.v1 import analytics, auth, complaints, websockets
+from app.api.v1 import analytics, auth, complaints, organizations, websockets
 from app.core.limiter import limiter
 from app.services.websocket_manager import ws_manager
 
@@ -48,6 +49,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(complaints.router, prefix="/api/v1", tags=["Complaints"])
 app.include_router(analytics.router, prefix="/api/v1", tags=["Analytics"])
+app.include_router(organizations.router, prefix="/api/v1", tags=["Organizations"])
 app.include_router(websockets.router)
 
 

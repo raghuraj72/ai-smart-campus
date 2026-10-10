@@ -9,7 +9,13 @@ from sqlmodel import SQLModel
 from app.core.config import settings
 
 # Import models from the central domain module so SQLModel registers their metadata
-from app.models.domain import User, Complaint
+from app.models.domain import (
+    User,
+    Complaint,
+    University,
+    Campus,
+    Department,
+)
 
 config = context.config
 
